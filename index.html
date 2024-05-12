@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Uygulaması</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .question-container {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="quiz-container">
+        <h1>Quiz Uygulaması</h1>
+        <div id="question" class="question-container"></div>
+        <div id="options" class="question-container"></div>
+        <button id="next-button" onclick="nextQuestion()" disabled>Sonraki Soru</button>
+    </div>
+
+    <div id="result-container" style="display: none;">
+        <h2>Sonuçlar</h2>
+        <table id="result-table">
+            <!-- Burada sonuçlar tablosu olacak -->
+        </table>
+    </div>
+
+    <script>
+        const apiUrl = 'https://jsonplaceholder.typicode.com/posts';
+        let questions = [];
+        let currentQuestionIndex = 0;
+        let answers = [];
+        let isAnswerable = false;
+        let countdownTimer;
+
+        async function fetchData() {
+            try {
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+                // JSON'dan rastgele 10 soru seç
+                questions = data.slice(0, 10).map(q => ({ id: q.id, title: q.title }));
+                renderQuestion();
+            } catch (error) {
+                console.error('Veri alınırken bir hata oluştu:', error);
+            }
+        }
+
+        function renderQuestion() {
+            const questionContainer = document.getElementById('question');
+            const optionsContainer = document.getElementById('options');
+            const currentQuestion = questions[currentQuestionIndex];
+            if (currentQuestion) {
+                questionContainer.innerHTML = `<strong>Soru ${currentQuestionIndex + 1}:</strong> ${currentQuestion.title}`;
+                // Rastgele şıklar oluştur
+                const options = ['A', 'B', 'C', 'D'];
+
+                optionsContainer.innerHTML = options.map((option, index) => `
+                    <input type="radio" name="answer" value="${option}" id="option${index}">
+                    <label for="option${index}">${option} - ${parseText(currentQuestion.title)}</label>
+                `).join('');
+                // Her soru için 30 saniyelik bir geri sayım başlat
+                startCountdown();
+            } else {
+                showResults();
+            }
+        }
+
+        function parseText(text) {
+            // Metinden bazı kelimeleri rastgele seç
+            const words = text.split(' ');
+            const selectedWords = [];
+            for (let i = 0; i < 2; i++) {
+                const randomIndex = Math.floor(Math.random() * words.length);
+                selectedWords.push(words[randomIndex]);
+            }
+            return selectedWords.join(' ');
+        }
+
+        function startCountdown() {
+            let secondsLeft = 30;
+            const timerDisplay = document.createElement('div');
+            timerDisplay.textContent = secondsLeft;
+            const questionContainer = document.getElementById('quiz-container');
+            questionContainer.appendChild(timerDisplay);
+            countdownTimer = setInterval(() => {
+                secondsLeft--;
+                timerDisplay.textContent = secondsLeft;
+                if (secondsLeft <= 0) {
+                    clearInterval(countdownTimer);
+                    nextQuestion();
+                }
+            }, 1000);
+            // 10 saniye sonra cevaplanabilir olmalı
+            setTimeout(() => {
+                isAnswerable = true;
+                document.getElementById('next-button').disabled = false;
+            }, 10000);
+        }
+
+        function nextQuestion() {
+            if (!isAnswerable) {
+                return;
+            }
+            clearInterval(countdownTimer);
+            const selectedOption = document.querySelector('input[name="answer"]:checked');
+            if (selectedOption) {
+                answers.push({
+                    questionId: questions[currentQuestionIndex].id,
+                    answer: selectedOption.value
+                });
+                currentQuestionIndex++;
+                renderQuestion();
+                isAnswerable = false;
+                document.getElementById('next-button').disabled = true;
+            } else {
+                alert('Lütfen bir seçenek seçin.');
+            }
+        }
+
+        function showResults() {
+            const resultContainer = document.getElementById('result-container');
+            const resultTable = document.getElementById('result-table');
+            resultContainer.style.display = 'block';
+            resultTable.innerHTML = `
+                <tr>
+                    <th>Soru</th>
+                    <th>Cevap</th>
+                </tr>
+                ${answers.map((answer, index) => `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${answer.answer}</td>
+                    </tr>
+                `).join('')}
+            `;
+        }
+
+        fetchData();
+    </script>
+</body>
+</html>
